@@ -54,7 +54,6 @@ function ControlPanel({
             placeholder="예: gemma4:e4b"
           />
         </label>
-        <div className="helper-text">기본 전략: 빠른 라우팅 gemma4:e2b, 정밀 검증 gemma4:e4b</div>
         <button className="primary-button" type="submit" disabled={loading || !datasetFile}>
           {loading ? "분석 중..." : "분석 실행"}
         </button>
