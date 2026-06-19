@@ -1,11 +1,6 @@
 import { useEffect, useState } from "react";
-import { AnalysisVisualization } from "./AnalysisVisualization";
-import { inferAnalysisType } from "../lib/analysisTypes";
-import { runColumnAnalysis } from "../lib/columnAnalysisRunner";
-import { requestLlmAnalysisPlan } from "../lib/llmAnalysisApi";
 import {
   buildColumnSummary,
-  formatAnalysisType,
   formatConfidence,
   formatCriterionName,
   formatFindingType,
@@ -42,6 +37,14 @@ function displayValue(value) {
     return entries.length ? entries.map(([key, nestedValue]) => `${key}: ${displayValue(nestedValue)}`).join(" / ") : "-";
   }
   return String(value);
+}
+
+function formatCellIssues(issues) {
+  return (issues || []).map((finding) => ({
+    key: `${finding.rule_id}-${finding.message}`,
+    label: `${formatFindingType(finding)} · ${formatCriterionName(finding.criterion_name)}`,
+    message: finding.message,
+  }));
 }
 
 function formatCount(value) {
@@ -139,129 +142,24 @@ function StandardMappingBadge({ column }) {
   );
 }
 
-function normalizeLlmInsightItems(items, columns) {
-  const safeColumns = columns || [];
-  return (items || [])
-    .map((item, index) => {
-      const column = safeColumns.find((candidate) => candidate.raw_name === item.target_column);
-      if (!column || !item.method_text) return null;
-      return {
-        key: `${column.raw_name}::llm-insight-${index}`,
-        column,
-        title: item.title || "LLM 추천 분석",
-        method: item.method_text,
-        analysisType: inferAnalysisType(item.method_text, column),
-        visualizationHint: item.visualization_hint,
-      };
-    })
-    .filter(Boolean);
-}
-
 export function PreviewPanel({
   headers,
   rows,
   columns,
   findings,
-  datasetFile,
-  useLlm,
-  llmModel,
 }) {
   const safeHeaders = headers || [];
   const safeRows = rows || [];
   const safeColumns = columns || [];
   const safeFindings = findings || [];
   const [hoveredColumnName, setHoveredColumnName] = useState(safeHeaders[0] || "");
-  const [analysisResults, setAnalysisResults] = useState({});
-  const [analysisLoadingKey, setAnalysisLoadingKey] = useState("");
-  const [analysisError, setAnalysisError] = useState("");
-  const [activeAnalysisKey, setActiveAnalysisKey] = useState("");
-  const [activeAnalysisMeta, setActiveAnalysisMeta] = useState(null);
-  const [insightAnalysisItems, setInsightAnalysisItems] = useState([]);
-  const [insightPlanLoading, setInsightPlanLoading] = useState(false);
-  const [insightPlanError, setInsightPlanError] = useState("");
   const hoveredColumn = safeColumns.find((column) => column.raw_name === hoveredColumnName) || null;
   const columnByName = new Map(safeColumns.map((column) => [column.raw_name, column]));
   const cellIssueMap = buildCellIssueMap(safeFindings);
-  const activeAnalysis = activeAnalysisKey ? analysisResults[activeAnalysisKey] : null;
 
   useEffect(() => {
     setHoveredColumnName(safeHeaders[0] || "");
-    setAnalysisResults({});
-    setAnalysisLoadingKey("");
-    setAnalysisError("");
-    setActiveAnalysisKey("");
-    setActiveAnalysisMeta(null);
-    setInsightAnalysisItems([]);
-    setInsightPlanError("");
-  }, [safeHeaders.join("|"), datasetFile?.name, datasetFile?.lastModified]);
-
-  useEffect(() => {
-    let ignore = false;
-
-    async function loadLlmAnalysisPlan() {
-      if (!useLlm || !safeHeaders.length || !safeRows.length) {
-        setInsightAnalysisItems([]);
-        setInsightPlanError(useLlm ? "" : "LLM 분석이 꺼져 있어 분석 항목을 생성하지 않습니다.");
-        return;
-      }
-
-      setInsightPlanLoading(true);
-      setInsightPlanError("");
-      try {
-        const payload = await requestLlmAnalysisPlan({
-          headers: safeHeaders,
-          sampleRows: safeRows,
-          columns: safeColumns,
-          llmModel,
-          datasetFile,
-        });
-        if (!ignore) {
-          setInsightAnalysisItems(normalizeLlmInsightItems(payload.items, safeColumns));
-        }
-      } catch (err) {
-        if (!ignore) {
-          setInsightAnalysisItems([]);
-          setInsightPlanError(err.message || "LLM 분석 항목 생성에 실패했습니다.");
-        }
-      } finally {
-        if (!ignore) setInsightPlanLoading(false);
-      }
-    }
-
-    loadLlmAnalysisPlan();
-    return () => {
-      ignore = true;
-    };
-  }, [useLlm, llmModel, safeHeaders.join("|"), safeRows.length, safeColumns.length, datasetFile?.name, datasetFile?.lastModified]);
-
-  async function handleRunAnalysis(column, method, key) {
-    const analysisType = inferAnalysisType(method, column);
-    setAnalysisLoadingKey(key);
-    setAnalysisError("");
-    setActiveAnalysisKey(key);
-    setActiveAnalysisMeta({ columnName: column.raw_name, method, analysisType });
-    try {
-      const { result, meta, warning } = await runColumnAnalysis({
-        headers: safeHeaders,
-        sampleRows: safeRows,
-        column,
-        method,
-        datasetFile,
-        useLlm,
-        llmModel,
-      });
-      setActiveAnalysisMeta(meta);
-      setAnalysisResults((prev) => ({
-        ...prev,
-        [key]: result,
-      }));
-      setAnalysisError(warning || "");
-    } catch (err) {
-      setAnalysisError(err.message || "분석 실행 중 오류가 발생했습니다.");
-    } finally {
-      setAnalysisLoadingKey("");
-    }
-  }
+  }, [safeHeaders.join("|")]);
 
   if (!safeRows.length) {
     return <div className="empty-state">업로드된 데이터 미리보기를 생성하지 못했습니다.</div>;
@@ -293,31 +191,37 @@ export function PreviewPanel({
             {safeRows.map((row, index) => (
               <tr key={`preview-row-${index}`}>
                 <td>{index + 1}</td>
-                {safeHeaders.map((header) => (
-                  <td
-                    key={`${index}-${header}`}
-                    className={[
-                      hoveredColumnName === header ? "is-column-hovered" : "",
-                      cellIssueMap.has(`${index + 1}::${header}`) ? "is-fix-needed" : "",
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                    onMouseEnter={() => setHoveredColumnName(header)}
-                    title={
-                      cellIssueMap.has(`${index + 1}::${header}`)
-                        ? cellIssueMap
-                            .get(`${index + 1}::${header}`)
-                            .map(
-                              (finding) =>
-                                `[${formatFindingType(finding)}] ${formatCriterionName(finding.criterion_name)}: ${finding.message}`,
-                            )
-                            .join("\n")
-                        : undefined
-                    }
-                  >
-                    {displayValue(row[header])}
-                  </td>
-                ))}
+                {safeHeaders.map((header) => {
+                  const issueKey = `${index + 1}::${header}`;
+                  const cellIssues = cellIssueMap.get(issueKey) || [];
+                  const formattedIssues = formatCellIssues(cellIssues);
+                  const hasIssues = formattedIssues.length > 0;
+                  return (
+                    <td
+                      key={`${index}-${header}`}
+                      className={[
+                        hoveredColumnName === header ? "is-column-hovered" : "",
+                        hasIssues ? "is-fix-needed" : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      onMouseEnter={() => setHoveredColumnName(header)}
+                      tabIndex={hasIssues ? 0 : undefined}
+                    >
+                      <span className="preview-cell-value">{displayValue(row[header])}</span>
+                      {hasIssues ? (
+                        <span className="cell-issue-tooltip" role="tooltip">
+                          {formattedIssues.map((issue) => (
+                            <span className="cell-issue-tooltip-item" key={issue.key}>
+                              <strong>{issue.label}</strong>
+                              <span>{issue.message}</span>
+                            </span>
+                          ))}
+                        </span>
+                      ) : null}
+                    </td>
+                  );
+                })}
               </tr>
             ))}
           </tbody>
@@ -413,70 +317,6 @@ export function PreviewPanel({
         )}
       </aside>
 
-      <section className="insight-analysis-panel">
-        <div className="analysis-canvas-header">
-          <div>
-            <h2 className="analysis-section-title">추천 데이터 분석</h2>
-            <div className="analysis-canvas-subtitle">
-              LLM이 업로드 데이터 샘플을 보고 분석 방법, 코드, 시각화 방향을 end-to-end로 생성합니다.
-            </div>
-          </div>
-        </div>
-        {insightPlanLoading ? (
-          <div className="empty-state">LLM이 데이터 샘플을 보고 분석 항목을 생성하고 있습니다.</div>
-        ) : insightAnalysisItems.length ? (
-          <ul className="analysis-method-list insight-analysis-list">
-            {insightAnalysisItems.map((item) => (
-              <li key={item.key}>
-                <div className="analysis-method-row">
-                  <span>
-                    <strong>{item.title || item.column.raw_name}</strong>
-                    <span className="analysis-method-type"> · {formatAnalysisType(item.analysisType)}</span>
-                    <br />
-                    {item.method}
-                  </span>
-                  <button
-                    className="inline-button"
-                    type="button"
-                    onClick={() => handleRunAnalysis(item.column, item.method, item.key)}
-                    disabled={analysisLoadingKey === item.key}
-                  >
-                    {analysisLoadingKey === item.key ? "실행 중" : "실행"}
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <div className="empty-state">
-            {insightPlanError || "LLM이 실행 가능한 도메인 분석 항목을 찾지 못했습니다."}
-          </div>
-        )}
-        {analysisError ? <div className="analysis-error">{analysisError}</div> : null}
-      </section>
-
-      <section className="analysis-canvas">
-        <div className="analysis-canvas-header">
-          <div>
-            <h2 className="analysis-section-title">분석 시각화</h2>
-            <div className="analysis-canvas-subtitle">
-              {activeAnalysisMeta
-                ? `${activeAnalysisMeta.columnName} · ${activeAnalysisMeta.title || formatAnalysisType(activeAnalysisMeta.analysisType)}`
-                : "추천 데이터 분석을 실행하면 여기에 표시됩니다."}
-            </div>
-          </div>
-        </div>
-        {activeAnalysis ? (
-          <div className="analysis-canvas-body">
-            <div className="analysis-canvas-summary">{displayValue(activeAnalysis.summary)}</div>
-            <AnalysisVisualization result={activeAnalysis} />
-          </div>
-        ) : analysisLoadingKey ? (
-          <div className="empty-state">분석을 실행하고 있습니다.</div>
-        ) : (
-          <div className="empty-state">아직 실행된 분석이 없습니다.</div>
-        )}
-      </section>
     </div>
   );
 }

@@ -19,8 +19,10 @@ function formatBreakdown(breakdown, labelFormatter = (value) => value) {
 function ControlPanel({
   datasetFile,
   setDatasetFile,
-  llmModel,
-  setLlmModel,
+  llmFastModel,
+  setLlmFastModel,
+  llmStrongModel,
+  setLlmStrongModel,
   loading,
   error,
   onSubmit,
@@ -37,14 +39,22 @@ function ControlPanel({
           />
         </label>
         <label>
-          LLM 모델
+          빠른 라우팅 모델
           <input
-            value={llmModel}
-            onChange={(event) => setLlmModel(event.target.value)}
-            placeholder="예: gpt-4o-mini"
+            value={llmFastModel}
+            onChange={(event) => setLlmFastModel(event.target.value)}
+            placeholder="예: gemma4:e2b"
           />
         </label>
-        <div className="helper-text">기본값: OpenAI GPT API `gpt-4o-mini`</div>
+        <label>
+          정밀 검증 모델
+          <input
+            value={llmStrongModel}
+            onChange={(event) => setLlmStrongModel(event.target.value)}
+            placeholder="예: gemma4:e4b"
+          />
+        </label>
+        <div className="helper-text">기본 전략: 빠른 라우팅 gemma4:e2b, 정밀 검증 gemma4:e4b</div>
         <button className="primary-button" type="submit" disabled={loading || !datasetFile}>
           {loading ? "분석 중..." : "분석 실행"}
         </button>
@@ -113,7 +123,7 @@ function FindingsTable({ findings }) {
   );
 }
 
-function ResultsPanel({ result, datasetFile, useLlm, llmModel }) {
+function ResultsPanel({ result }) {
   if (!result) {
     return (
       <section className="results-panel">
@@ -138,9 +148,6 @@ function ResultsPanel({ result, datasetFile, useLlm, llmModel }) {
           rows={result.preview_rows || []}
           columns={result.columns || []}
           findings={result.findings || []}
-          datasetFile={datasetFile}
-          useLlm={useLlm}
-          llmModel={llmModel}
         />
       </div>
     </section>
@@ -150,7 +157,8 @@ function ResultsPanel({ result, datasetFile, useLlm, llmModel }) {
 function App() {
   const [datasetFile, setDatasetFile] = useState(null);
   const [useLlm] = useState(true);
-  const [llmModel, setLlmModel] = useState("gpt-4o-mini");
+  const [llmFastModel, setLlmFastModel] = useState("gemma4:e2b");
+  const [llmStrongModel, setLlmStrongModel] = useState("gemma4:e4b");
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -168,7 +176,8 @@ function App() {
       const body = new FormData();
       if (datasetFile) body.append("dataset_file", datasetFile);
       body.append("use_llm_agents", String(useLlm));
-      if (llmModel) body.append("llm_model", llmModel);
+      if (llmFastModel) body.append("llm_fast_model", llmFastModel);
+      if (llmStrongModel) body.append("llm_strong_model", llmStrongModel);
 
       const response = await fetch("/api/analyze", {
         method: "POST",
@@ -192,7 +201,10 @@ function App() {
     <div className="app-shell">
       <header className="hero">
         <div className="hero-copy">
-          <h1>LLM 기반 공공데이터 품질 관리 및 분석 자동화 시스템</h1>
+          <div className="hero-brand">
+            <img className="hero-logo" src="/image/ldq_logo.png" alt="LDQ" />
+            <h1>LLM 기반 공공데이터 품질 관리 시스템</h1>
+          </div>
         </div>
       </header>
 
@@ -200,17 +212,19 @@ function App() {
         <ControlPanel
           datasetFile={datasetFile}
           setDatasetFile={setDatasetFile}
-          llmModel={llmModel}
-          setLlmModel={setLlmModel}
+          llmFastModel={llmFastModel}
+          setLlmFastModel={setLlmFastModel}
+          llmStrongModel={llmStrongModel}
+          setLlmStrongModel={setLlmStrongModel}
           loading={loading}
           error={error}
           onSubmit={handleAnalyze}
         />
-        <ResultsPanel result={result} datasetFile={datasetFile} useLlm={useLlm} llmModel={llmModel} />
+        <ResultsPanel result={result} />
       </main>
 
       <footer className="app-footer">
-        <img className="footer-logo" src="/image/logo.png" alt="행정안전부 로고" />
+        <img className="footer-logo" src="/image/mois_logo.png" alt="행정안전부 로고" />
         <span className="footer-text">행정안전부 데이터정보화담당관</span>
       </footer>
     </div>

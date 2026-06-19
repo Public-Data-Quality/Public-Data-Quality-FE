@@ -1,24 +1,3 @@
-export function formatAnalysisType(type) {
-  const labels = {
-    null_ratio: "결측 비율",
-    value_distribution: "값 분포",
-    length_distribution: "길이 분포",
-    date_format_distribution: "날짜 형식 분포",
-    boolean_value_distribution: "여부값 분포",
-    numeric_range: "숫자 범위",
-    category_numeric_distribution: "명칭별 숫자 분포",
-    coordinate_range: "좌표 범위",
-    cross_column_missing: "컬럼 간 누락 비교",
-    address_coordinate_consistency: "지역-좌표 분포",
-    organization_location_distribution: "기관-지역 분포",
-    llm_generated: "LLM 실행 분석",
-    flag_count_consistency: "여부-수량 분포",
-    date_order_consistency: "기간 분포",
-    code_name_consistency: "코드-명칭 분포",
-  };
-  return labels[type] || type;
-}
-
 export function formatPercent(value) {
   if (value === null || value === undefined) return "-";
   return `${Math.round(value * 100)}%`;
@@ -54,6 +33,8 @@ export function formatCriterionName(value) {
     required_value: "필수값 존재 여부",
     garbled_text: "깨진 글자 검증",
     whitespace_special_characters: "공백/특수문자 검증",
+    whitespace_issue: "공백 이상 검증",
+    special_character_issue: "불필요 특수문자 검증",
     duplicate_data: "중복 데이터 검증",
     date_domain: "날짜 형식 유효성",
     number_domain: "번호/수치 형식 유효성",
@@ -79,6 +60,8 @@ export function formatRuleId(value) {
     required_value: "필수값 누락 검증",
     garbled_text: "깨진 글자 검증",
     whitespace_special_characters: "공백/특수문자 검증",
+    whitespace_issue: "공백 이상 검증",
+    special_character_issue: "불필요 특수문자 검증",
     duplicate_data: "중복 데이터 검증",
     date_domain: "날짜 도메인 검증",
     date_format_inconsistent: "날짜 형식 혼용",
