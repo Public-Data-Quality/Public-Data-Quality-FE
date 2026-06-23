@@ -30,14 +30,21 @@ function ControlPanel({
   return (
     <section className="control-panel">
       <form onSubmit={onSubmit}>
-        <label>
-          CSV / Excel 업로드
-          <input
-            type="file"
-            accept=".csv,.xlsx,.xls,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            onChange={(event) => setDatasetFile(event.target.files?.[0] ?? null)}
-          />
-        </label>
+        <div className="file-field">
+          <span className="file-field-label">CSV / Excel 업로드</span>
+          <label className="file-picker">
+            <input
+              className="file-picker-input"
+              type="file"
+              accept=".csv,.xlsx,.xls,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              onChange={(event) => setDatasetFile(event.target.files?.[0] ?? null)}
+            />
+            <span className="file-picker-action">파일 선택</span>
+            <span className="file-picker-name" title={datasetFile?.name || ""}>
+              {datasetFile?.name || "선택된 파일 없음"}
+            </span>
+          </label>
+        </div>
         <label>
           빠른 라우팅 모델
           <input
