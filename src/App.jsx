@@ -3,18 +3,10 @@ import { FindingTypeBadge, SummaryCard, displayValue } from "./components/common
 import { PreviewPanel } from "./components/PreviewPanel";
 import {
   formatCriterionName,
-  formatMatchType,
-  formatPercent,
   formatRelatedColumns,
   formatRuleId,
   formatSeverity,
 } from "./lib/formatters";
-
-function formatBreakdown(breakdown, labelFormatter = (value) => value) {
-  return Object.entries(breakdown || {})
-    .map(([key, value]) => `${labelFormatter(key)} ${value}`)
-    .join(" | ") || "-";
-}
 
 function ControlPanel({
   datasetFile,
@@ -76,15 +68,9 @@ function SummarySection({ summary }) {
       <SummaryCard label="데이터셋" value={summary.dataset_name} />
       <SummaryCard label="행 수" value={summary.row_count ?? "-"} />
       <SummaryCard label="컬럼 수" value={summary.column_count} />
-      <SummaryCard label="표준용어 매핑 비율" value={formatPercent(summary.standard_term_coverage)} />
-      <SummaryCard label="표준용어 매핑 분포" value={formatBreakdown(summary.standard_term_coverage_breakdown, formatMatchType)} />
-      <SummaryCard label="수정 제안 수" value={summary.repair_suggestion_count} />
-      <SummaryCard label="검증 결과 건수" value={summary.finding_count} />
-      <SummaryCard label="수동 검토 수" value={summary.manual_review_count} />
-      <SummaryCard label="수동 검토 결과" value={summary.manual_review_finding_count ?? 0} />
-      <SummaryCard label="오류/이상 결과" value={summary.issue_finding_count ?? 0} />
-      <SummaryCard label="결과 유형 분포" value={formatBreakdown(summary.finding_type_breakdown)} />
-      <SummaryCard label="관계/완결성/유효성" value={formatBreakdown(summary.finding_breakdown)} />
+      <SummaryCard label="검증 결과" value={summary.finding_count ?? 0} />
+      <SummaryCard label="오류/이상" value={summary.issue_finding_count ?? 0} />
+      <SummaryCard label="수동 검토" value={summary.manual_review_finding_count ?? 0} />
     </div>
   );
 }
