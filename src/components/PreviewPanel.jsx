@@ -4,7 +4,6 @@ import {
   formatConfidence,
   formatCriterionName,
   formatFindingType,
-  formatMatchType,
   formatPercent,
 } from "../lib/formatters";
 
@@ -50,6 +49,16 @@ function formatCellIssues(issues) {
 function formatCount(value) {
   if (value === null || value === undefined) return "-";
   return Number(value).toLocaleString("ko-KR");
+}
+
+function totalCount(column) {
+  if (column.total_count !== null && column.total_count !== undefined) {
+    return column.total_count;
+  }
+  if (column.non_empty_count !== null && column.non_empty_count !== undefined) {
+    return Number(column.non_empty_count || 0) + Number(column.null_count || 0);
+  }
+  return null;
 }
 
 function buildValueDistributionRows(column) {
@@ -111,9 +120,8 @@ function ColumnValueDonut({ column }) {
 function standardMappingText(column) {
   if (!column) return "표준용어 정보 없음";
   const candidate = column.standard_candidates?.[0];
-  const matchType = formatMatchType(column.standard_match_type);
   if (!candidate) return "표준용어 미매핑";
-  return `${candidate} · ${matchType}`;
+  return candidate;
 }
 
 function normalizedColumnName(value) {
@@ -129,15 +137,14 @@ function hasDifferentStandardTerm(column) {
 function StandardMappingBadge({ column }) {
   if (!hasDifferentStandardTerm(column)) return null;
   const candidate = column?.standard_candidates?.[0];
-  const matchType = formatMatchType(column?.standard_match_type);
 
   return (
     <span
       className="standard-mapping-badge is-mapped"
       title={standardMappingText(column)}
     >
+      <span className="standard-mapping-prefix">표준</span>
       <span className="standard-mapping-term">{candidate}</span>
-      <span className="standard-mapping-type">{matchType}</span>
     </span>
   );
 }
@@ -250,7 +257,7 @@ export function PreviewPanel({
             <div className="hover-detail-item">
               <div className="hover-detail-key">전체 / 유효값</div>
               <div className="hover-detail-value">
-                {formatCount(hoveredColumn.total_count)}건 / {formatCount(hoveredColumn.non_empty_count)}건
+                {formatCount(totalCount(hoveredColumn))}건 / {formatCount(hoveredColumn.non_empty_count)}건
               </div>
             </div>
             <div className="hover-detail-item">
@@ -296,10 +303,6 @@ export function PreviewPanel({
             <div className="hover-detail-item">
               <div className="hover-detail-key">표준용어 후보</div>
               <div className="hover-detail-value">{hoveredColumn.standard_candidates?.[0] || "-"}</div>
-            </div>
-            <div className="hover-detail-item">
-              <div className="hover-detail-key">매핑 유형</div>
-              <div className="hover-detail-value">{formatMatchType(hoveredColumn.standard_match_type)}</div>
             </div>
             <div className="hover-detail-item">
               <div className="hover-detail-key">샘플값</div>
