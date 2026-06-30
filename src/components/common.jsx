@@ -13,10 +13,13 @@ export function displayValue(value) {
 }
 
 export function SummaryCard({ label, value }) {
+  const renderedValue = displayValue(value);
   return (
     <div className="summary-card">
       <div className="summary-label">{label}</div>
-      <div className="summary-value">{displayValue(value)}</div>
+      <div className="summary-value" title={renderedValue}>
+        {renderedValue}
+      </div>
     </div>
   );
 }

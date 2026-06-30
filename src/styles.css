@@ -268,6 +268,7 @@ input {
   margin-top: 4px;
   font-weight: 700;
   font-size: 1.03rem;
+  overflow-wrap: anywhere;
 }
 
 .finding-badge {

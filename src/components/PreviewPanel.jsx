@@ -11,15 +11,15 @@ function buildCellIssueMap(findings) {
   const issueMap = new Map();
 
   for (const finding of findings || []) {
+    if (finding.finding_type !== "issue") continue;
     if (!finding.row_indexes?.length) continue;
-    const relatedColumns = finding.related_columns?.length ? finding.related_columns : [finding.column_name];
+    if (!finding.column_name) continue;
+
     for (const rowIndex of finding.row_indexes) {
-      for (const columnName of relatedColumns) {
-        const key = `${rowIndex}::${columnName}`;
-        const bucket = issueMap.get(key) || [];
-        bucket.push(finding);
-        issueMap.set(key, bucket);
-      }
+      const key = `${rowIndex}::${finding.column_name}`;
+      const bucket = issueMap.get(key) || [];
+      bucket.push(finding);
+      issueMap.set(key, bucket);
     }
   }
 
